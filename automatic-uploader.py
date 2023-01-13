@@ -1,9 +1,7 @@
-from secret import access_key, secret_access_key
-
-import boto3
+import boto3, pyinotify
 import os #access directories on laptop
 
-client = boto3.client('s3', aws_access_key_id = access_key, aws_secret_access_key = secret_access_key)
+client = boto3.client('s3')
 
 for file in os.listdir(): #all files in same working dir
 
