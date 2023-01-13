@@ -44,7 +44,7 @@ print("Syncing the whole directory", path, "to s3.")
 # The watch manager stores the watches and provides operations on watches
 wm = pyinotify.WatchManager()
 
-mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE  # watched events
+mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_MODIFY  # watched events
 
 class EventHandler(pyinotify.ProcessEvent): #The EventHandler class inherits from a processing base class called ProcessEvent; it handles notifications and takes actions through specific processing methods. For an EVENT_TYPE, a process_EVENT_TYPE function will execute. 
     def process_IN_CREATE(self, event):
@@ -53,6 +53,10 @@ class EventHandler(pyinotify.ProcessEvent): #The EventHandler class inherits fro
 
     def process_IN_DELETE(self, event):
         print("Removing", event.pathname)
+
+    def process_IN_MODIFY(self,event):
+        print("Modifying", event.pathname, "and syncing changes to s3")
+        sync_file(Path(str(event.pathname)).name)
 
 handler = EventHandler()
 notifier = pyinotify.Notifier(wm, handler)
@@ -66,7 +70,6 @@ notifier.loop()
 
 """
 next steps:
-make it auto-detect new files added
 should it delete deleted local files?
 
 sync edited files
