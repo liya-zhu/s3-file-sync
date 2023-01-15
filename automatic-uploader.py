@@ -4,11 +4,15 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import time
 from pathlib import Path
+from botocore.exceptions import ClientError
+
 
 
 client = boto3.client('s3')
 path = '/home/jim/ws/tobeuploaded/' #path of the directory to be synced
 bucket_name = 'filesyncc'
+phone_num = "+16472002360"
+sns = boto3.resource('sns')
 
 #uploading to s3
 def sync_whole_dir():
@@ -48,19 +52,24 @@ print("Syncing the whole directory", path, "to s3.")
 class ChangeHandler(FileSystemEventHandler): #event handler that takes action when an event is received
     @staticmethod
     def on_any_event(event):
+        messenger = SnsWrapper(sns)
         if event.is_directory:
             return None
   
         elif event.event_type == 'created':
-            print("Hey,", Path(str(event.src_path)).name, "has been", event.event_type, "in",event.src_path, "!\nUploading to ", bucket_name)
+            message = "Hey,"+ Path(str(event.src_path)).name +"has been"+ event.event_type+ "in" + event.src_path + "!\nUploading to "+ bucket_name
+            messenger.publish_text_message(phone_num,message)
+            
             sync_file(Path(str(event.src_path)).name)
 
         elif event.event_type == 'modified':
-            print("Hey,", Path(str(event.src_path)).name, "has been", event.event_type, "!\nSyncing changes to ",bucket_name)
+            message = "Hey,"+ Path(str(event.src_path)).name + "has been"+ event.event_type + "!\nSyncing changes to " + bucket_name
+            messenger.publish_text_message(phone_num,message)
             sync_file(Path(str(event.src_path)).name)
 
         elif event.event_type == 'deleted':
-            print("Hey,", event.src_path, "has been", event.event_type, "!\nDeleting from ",bucket_name)
+            message = "Hey,"+ event.src_path + "has been" + event.event_type + "!\nDeleting from "+ bucket_name
+            messenger.publish_text_message(phone_num,message)
         
         else:
             return None
@@ -85,6 +94,38 @@ class OnMyWatch:
             print("Observer Stopped")
   
         self.observer.join()
+
+#A topic is a message channel. When you publish a message to a topic, it fans out the message to all subscribed endpoints.
+class SnsWrapper:
+    """Encapsulates Amazon SNS topic and subscription functions."""
+    def __init__(self, sns_resource):
+        """
+        :param sns_resource: A Boto3 Amazon SNS resource.
+        """
+        self.sns_resource = sns_resource
+
+    def publish_text_message(self, phone_number, message):
+        """
+        Publishes a text message directly to a phone number without need for a
+        subscription.
+
+        :param phone_number: The phone number that receives the message. This must be
+                             in E.164 format. For example, a United States phone
+                             number might be +12065550101.
+        :param message: The message to send.
+        :return: The ID of the message.
+        """
+        try:
+            response = self.sns_resource.meta.client.publish(
+                PhoneNumber=phone_number, Message=message)
+            message_id = response['MessageId']
+            print("Published message to %s.", phone_number)
+        except ClientError:
+            print("Couldn't publish message to %s.", phone_number)
+            raise
+        else:
+            return message_id
+
 
 
 if __name__ == '__main__':
