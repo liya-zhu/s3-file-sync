@@ -9,9 +9,9 @@ from botocore.exceptions import ClientError
 
 
 client = boto3.client('s3')
-path = '/home/jim/ws/tobeuploaded/' #path of the directory to be synced
-bucket_name = 'filesyncc'
-phone_num = "+16472002360"
+path = "" # path of the directory to be synced
+bucket_name = "" #s3 bucket name
+phone_num = "" # receiver's number
 sns = boto3.resource('sns')
 
 #uploading to s3
